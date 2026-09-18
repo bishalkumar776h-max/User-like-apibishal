@@ -1,4 +1,5 @@
 Flask[async]
+pyTelegramBotAPI
 requests
 aiohttp
 googleapis-common-protos
