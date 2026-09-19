@@ -184,6 +184,27 @@ def decode_protobuf(binary):
         return None
 
 
+def fetch_player_level_from_api(uid):
+    """
+    Fetch player level from external API.
+    Returns int level on success, None on failure.
+    """
+    try:
+        url = f"https://bishal-paswan.vercel.app/bmw?uid={uid}"
+        resp = requests.get(url, verify=False, timeout=15)
+        if resp.status_code != 200:
+            app.logger.error(f"Level API failed with status {resp.status_code}")
+            return None
+        data = resp.json()
+        level = data.get("basicInfo", {}).get("level")
+        if level is None:
+            return None
+        return int(level)
+    except Exception as e:
+        app.logger.error(f"fetch_player_level_from_api exception: {e}")
+        return None
+
+
 # ================= Main API endpoint =================
 
 @app.route('/like', methods=['GET'])
@@ -238,8 +259,15 @@ def handle_requests():
         after_like = int(data_after.get('AccountInfo', {}).get('Likes', 0))
         player_uid = int(data_after.get('AccountInfo', {}).get('UID', 0))
         player_name = str(data_after.get('AccountInfo', {}).get('PlayerNickname', ''))
-        player_level = int(data_after.get('AccountInfo', {}).get('Level', 0))
         player_region = str(data_after.get('AccountInfo', {}).get('PlayerRegion', server_name))
+
+        # ✅ Level from external API (fallback to protobuf if fails)
+        player_level = fetch_player_level_from_api(uid)
+        if player_level is None:
+            try:
+                player_level = int(data_after.get('AccountInfo', {}).get('Level', 0))
+            except Exception:
+                player_level = 0
 
         like_given = after_like - before_like
         status = 1 if like_given != 0 else 2
